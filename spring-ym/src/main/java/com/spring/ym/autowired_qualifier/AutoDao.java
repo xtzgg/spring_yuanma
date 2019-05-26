@@ -1,10 +1,9 @@
-package com.spring.ym.componentScan_std;
+package com.spring.ym.autowired_qualifier;
 
 import org.springframework.stereotype.Repository;
 
 @Repository
-public class CRepository {
-
+public class AutoDao {
     private String label = "1";
 
     public String getLabel() {
@@ -13,5 +12,12 @@ public class CRepository {
 
     public void setLabel(String label) {
         this.label = label;
+    }
+
+    @Override
+    public String toString() {
+        return "AutoDao{" +
+                "label='" + label + '\'' +
+                '}';
     }
 }
