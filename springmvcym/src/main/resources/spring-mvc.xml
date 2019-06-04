@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+    <!-- private final Map<String, Object> urlMap = new LinkedHashMap();
+        String ; url
+        Object : handler
+     -->
+    <bean id="helloController" class="com.spring.mvc.controller.HelloController"/>
+    <!--映射配置 -->
+    <bean  class="org.springframework.web.servlet.handler.SimpleUrlHandlerMapping">
+        <property name="urlMap">
+            <props>
+                <prop key="/user.do">helloController</prop>
+            </props>
+        </property>
+    </bean>
+    <!-- 配置 调用适配器  -->
+    <bean class="org.springframework.web.servlet.mvc.SimpleControllerHandlerAdapter"/>
+    <!-- 配置viewResolver视图仓库  -->
+    <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+        <property name="prefix" value="/WEB-INF/page/"/>
+        <property name="suffix" value=".jsp"/>
+        <!-- 配置 视图解析器  -->
+        <property name="viewClass" value="org.springframework.web.servlet.view.JstlView"/>
+    </bean>
+    <!-- 工作中我们使用：mvc:来配置 -->
+
+
+
+
+
+
+</beans>

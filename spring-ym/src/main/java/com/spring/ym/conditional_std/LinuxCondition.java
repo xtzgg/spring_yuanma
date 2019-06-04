@@ -33,8 +33,6 @@ public class LinuxCondition implements Condition {
         if(property.contains("Linux")){
             return true;
         }
-
-
         return false;
     }
 }
