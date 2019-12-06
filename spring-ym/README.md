@@ -88,12 +88,16 @@
 - BeanPostProcessor
 ```在bean初始化前后进行一些处理工作 -> bean此时已经创建完成
     - createBean()
-    - BeanPostProcessor.postProcessBeforeInitialization：
-    - populateBean(beanName,mdb,instanceWrapper);//初始化赋值
-        - @Bean(initMethod = "init",destroyMethod = "destory")
-        - @Bean  // Cat implements InitializingBean, DisposableBean
-        - @Bean //jsr250  @PostConstruct @PreDestroy
-    - BeanPostProcessor.postProcessAfterInitialization:
+        - 1 Object bean = resolveBeforeInstantiation(beanName, mbdToUse);//AOP对象
+        - next step
+    - populateBean(beanName, mbd, instanceWrapper);//初始化赋值
+    - initializeBean(beanName, exposedObject, mbd);
+        - BeanPostProcessor.postProcessBeforeInitialization：
+        - invokeInitMethods(beanName, wrappedBean, mbd);
+            - @Bean(initMethod = "init",destroyMethod = "destory")
+            - @Bean  // Cat implements InitializingBean, DisposableBean
+            - @Bean //jsr250  @PostConstruct @PreDestroy
+        - BeanPostProcessor.postProcessAfterInitialization:
    
    很多processor 了解每一个的作用
     - ApplicationContextAwareProcessor 获取容器
@@ -122,12 +126,90 @@
 - 源码追溯
     - 以上组件的作用
     - 触发时机，实际应用场景
-
-
+- spring IOC源码(讲解每个时机做了什么，重要组件的触发时机，作用)
+```
+    - refresh()
+        - prepareRefresh() 
+            - 初始化环境变量，检查环境变量参数是否合法
+            - 加载早期的ApplicationListener
+        - obtainFreshBeanFactory();
+            - this.beanFactory = new DefaultListableBeanFactory();//已经创建的对象
+        - prepareBeanFactory(beanFactory);// 对beanFactory做一些初始化规范操作
+            - 里面包含了各种aware忽略，类加载器指定，需要加载的bean指定
+        - postProcessBeanFactory(beanFactory);// beanFactory初始化之前执行，未实现
+        - invokeBeanFactoryPostProcessors(beanFactory);
+            - 注意此时加载该类信息：AutowiredAnnotationBeanPostProcessor 
+            - BeanDefinitionRegistryPostProcessor 和  BeanFactoryPostProcessor 执行
+            - 主要排序order
+            - 此时未真正创建bean
+        - registerBeanPostProcessors(beanFactory);
+            - 实现了BeanPostProcessor的接口的类进行汇总
+            - 排序order优先级，分别添加到beanFactory中去
+            - beanFactory.addBeanPostProcessor(new ApplicationListenerDetector(applicationContext));
+                - 看注释：该postProcessor是监听所有实现了ApplicationListener接口的bean，不能被beanfacory.getBeanNamesForType获取，且优先级最低
+        - initMessageSource();//国际话规范
+        - initApplicationEventMulticaster();//多播器
+            -   new SimpleApplicationEventMulticaster(beanFactory)
+        - onRefresh();
+        - registerListeners();   
+            - 添加已有的监听：getApplicationEventMulticaster().addApplicationListener(listener);
+            - 执行早期的监听：getApplicationEventMulticaster().multicastEvent(earlyEvent);
+        - finishBeanFactoryInitialization(beanFactory); 创建bean实例
+            - 实例化且初始化所有的bean
+            - 然后执行SmartInitializingSingleton类或者实现类中的方法
+                - 实例化SmartInitializingSingleton对象
+                - 且执行smartSingleton.afterSingletonsInstantiated();
+        - 生命周期相关的
+```
+- spring的循环依赖
+```https://www.imooc.com/article/34150
+    1 会按照顺序，先去实例化 beanA。然后发现 beanA 依赖于 beanB，接在又去实例化 beanB。实例化 beanB 时，发现 beanB 又依赖于 beanA。
+    2 在容器再次发现 beanB 依赖于 beanA 时，容器会获取 beanA 对象的一个早期的引用（early reference），并把这个早期引用注入到 beanB 中，让 beanB 先完成实例化。beanB 完成实例化，beanA 就可以获取到 beanB 的引用，beanA 随之完成实例化。
+    3 早期引用：并未进行初始化的bean
+        - singletonObjects 用于存放完全初始化好的 bean，从该缓存中取出的 bean 可以直接使用 
+        - earlySingletonObjects 存放原始的 bean 对象（尚未填充属性），用于解决循环依赖 
+        - singletonFactories 存放 bean 工厂对象，用于解决循环依赖
+    4 依赖于其中一个无参的构造函数
+        - 必须有一个无参构造函数
+    5 populateBean 判断是否进行循环依赖
+```
+- spring Aop的流程
+```
+    - IOC中bean的创建过程
+        - bean是一个代理bean
+    - 1 AOP简单使用
+        - AOP的表达式类型：
+            表达式标签
+            @annotation:用于匹配当前执行方法持有指定注解的方法；
+            execution()：用于匹配方法执行的连接点
+            //...其他类型自己查找
+    - 2 AOP原理解析
+        1 如果目标类是接口或者是代理类，则直接使用JDKproxy；其他情况则使用CGLIBproxy
+        2 加载：
+            - 获取候选增强器
+            - 创建MathCaculator对象
+                - 获取当前bean的候选的所有增强器
+                - 找到能在当前bean使用的增强器
+                - 给增强器排序
+            - 保存当前bean在advisedBeans中：
+            - 如果当前bean需要增强，创建当前bean的代理对象：Object proxy = this.createProxy
+            - 给容器中返回当前组件使用cglib增强了的代理对象
+          执行：
+            - cglibProxy.intercept(); //拦截目标方法的执行
+            - 根据proxyFactory(this.advisor)获取需要执行的目标方法拦截器链
+            - 利用拦截器的链式机制，依次进入每一个拦截器进行执行
+                - 正常执行： 前置通知--->目标方法--->后置通知--->返回通知
+                - 异常执行： 前置通知--->目标方法--->后置通知--->异常通知
+        
+        
+        
+           
+```
 
 
 
 ###### fork&join
+- 1 计算1到1个亿的求和，单线程和fork&join性能比较
 
 
 
