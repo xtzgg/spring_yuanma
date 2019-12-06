@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Import;
 public class Import_config {
     @Bean
     public Person person(){
+        System.out.println("winCondition");
         return new Person();
     }
 }

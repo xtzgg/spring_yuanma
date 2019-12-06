@@ -1,10 +1,7 @@
 package com.spring.ym.scope_std;
 
 import com.spring.ym.entity.Person;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.context.annotation.Scope;
+import org.springframework.context.annotation.*;
 
 @Configuration
 public class Scope_config {
